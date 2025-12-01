@@ -2,133 +2,200 @@ import cv2
 import mediapipe as mp
 import time
 import math
+import numpy as np
+#import serial 
 
-# --- CONFIGURACIÓN ---
-# Umbral: Si el EAR es menor a esto, el ojo se considera cerrado.
-# (Calibra este valor: 0.20 a 0.25 suele funcionar bien)
-UMBRAL_EAR = 0.22 
+# --- CONFIGURACIÓN DEL PUERTO SERIAL (ARDUINO) ---
+try:
+    # ser = serial.Serial('COM3', 9600, timeout=1) 
+    ser = None 
+except:
+    ser = None
 
-# Variables de estado
-tiempo_inicio_cierre = None
+# --- PARÁMETROS DE CALIBRACIÓN ---
+UMBRAL_EAR = 0.21        
+UMBRAL_PITCH_ABAJO = 12  
+FACTOR_LINEA = 3.0       # Multiplicador visual: Haz más grande este número para una línea más larga
+
+# --- VARIABLES DE ESTADO ---
+tiempo_inicio_anomalia = None
 estado_actual = "NORMAL"
+
+# Variables de Calibración (Offset)
+offset_pitch = 0
+offset_yaw = 0
+calibrado = False
 
 # --- INICIALIZACIÓN DE MEDIAPIPE ---
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp.solutions.face_mesh.FaceMesh(
     max_num_faces=1,
-    refine_landmarks=True, # Importante para tener puntos precisos del iris/ojo
+    refine_landmarks=True,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
 
-# Índices de los puntos de los ojos en la malla de MediaPipe
-# (Estos son puntos específicos del contorno del ojo)
+# Índices de los ojos
 OJO_IZQUIERDO = [362, 385, 387, 263, 373, 380]
 OJO_DERECHO = [33, 160, 158, 133, 153, 144]
 
-# --- FUNCIONES MATEMÁTICAS ---
 def distancia_euclidiana(punto1, punto2):
     x1, y1 = punto1
     x2, y2 = punto2
     return math.hypot(x2 - x1, y2 - y1)
 
 def calcular_ear(landmarks, indices, w, h):
-    # Obtener coordenadas (x, y) de los 6 puntos del ojo
     coords = []
     for i in indices:
         pt = landmarks[i]
         coords.append((int(pt.x * w), int(pt.y * h)))
-
-    # Calcular las distancias verticales (p2-p6 y p3-p5)
+    
     A = distancia_euclidiana(coords[1], coords[5])
     B = distancia_euclidiana(coords[2], coords[4])
-
-    # Calcular la distancia horizontal (p1-p4)
     C = distancia_euclidiana(coords[0], coords[3])
+    
+    return (A + B) / (2.0 * C), coords
 
-    # Fórmula del EAR (Eye Aspect Ratio)
-    ear = (A + B) / (2.0 * C)
-    return ear, coords
+def obtener_angulo_cabeza(landmarks, w, h):
+    face_3d = np.array([
+        (0.0, 0.0, 0.0),             # Nariz
+        (0.0, -330.0, -65.0),        # Barbilla
+        (-225.0, 170.0, -135.0),     # Ojo Izquierdo
+        (225.0, 170.0, -135.0),      # Ojo Derecho
+        (-150.0, -150.0, -125.0),    # Boca Izquierda
+        (150.0, -150.0, -125.0)      # Boca Derecha
+    ], dtype=np.float64)
+
+    face_2d = []
+    for idx in [1, 152, 263, 33, 291, 61]:
+        lm = landmarks[idx]
+        x, y = int(lm.x * w), int(lm.y * h)
+        face_2d.append([x, y])
+    
+    face_2d = np.array(face_2d, dtype=np.float64)
+
+    focal_length = 1 * w
+    cam_matrix = np.array([ [focal_length, 0, w / 2], [0, focal_length, h / 2], [0, 0, 1] ])
+    dist_matrix = np.zeros((4, 1), dtype=np.float64)
+
+    success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
+    rmat, jac = cv2.Rodrigues(rot_vec)
+    angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+
+    x = float(angles[0]) * 360 
+    y = float(angles[1]) * 360
+    
+    if x < -180: x += 360
+    elif x > 180: x -= 360
+    
+    return x, y 
 
 # --- BUCLE PRINCIPAL ---
-cap = cv2.VideoCapture(0) # 0 suele ser la webcam por defecto
+cap = cv2.VideoCapture(0)
 
-print("Iniciando sistema... Presiona 'q' para salir.")
+print("INSTRUCCIONES: Presiona 'C' para calibrar tu posición neutral.")
 
 while cap.isOpened():
     ret, frame = cap.read()
-    if not ret:
-        break
+    if not ret: break
 
-    # MediaPipe requiere imagen en RGB
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     resultados = face_mesh.process(frame_rgb)
-    
-    # Obtener dimensiones para dibujar
     h, w, _ = frame.shape
+    
+    # Panel de info superior
+    cv2.rectangle(frame, (0,0), (w, 30), (50, 50, 50), -1)
+    if calibrado:
+        msg_cal = "SISTEMA CALIBRADO"
+        col_cal = (0, 255, 0)
+    else:
+        msg_cal = "NO CALIBRADO (Presiona 'C' mirando al frente)"
+        col_cal = (0, 0, 255)
+    
+    cv2.putText(frame, msg_cal, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, col_cal, 1)
 
     if resultados.multi_face_landmarks:
         for face_landmarks in resultados.multi_face_landmarks:
-            # Calcular EAR para ambos ojos
+            # 1. EAR y Puntos
             ear_izq, coords_izq = calcular_ear(face_landmarks.landmark, OJO_IZQUIERDO, w, h)
             ear_der, coords_der = calcular_ear(face_landmarks.landmark, OJO_DERECHO, w, h)
-
-            # Promedio de ambos ojos (para mayor robustez)
             ear_promedio = (ear_izq + ear_der) / 2.0
+            
+            for (cx, cy) in coords_izq + coords_der:
+                cv2.circle(frame, (cx, cy), 1, (0, 255, 0), -1)
 
-            # --- DIBUJAR EN PANTALLA ---
-            # Dibujamos el contorno de los ojos para ver qué detecta
-            for (x, y) in coords_izq + coords_der:
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)
+            # 2. Cabeza RAW (Crudo)
+            raw_pitch, raw_yaw = obtener_angulo_cabeza(face_landmarks.landmark, w, h)
 
-            # Mostrar valor EAR en pantalla (útil para calibrar)
-            cv2.putText(frame, f"EAR: {ear_promedio:.2f}", (30, 30), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            # 3. Aplicar Calibración (Resta el offset)
+            pitch = raw_pitch - offset_pitch
+            yaw = raw_yaw - offset_yaw
 
-            # --- LÓGICA DE DETECCIÓN DE SUEÑO ---
-            if ear_promedio < UMBRAL_EAR:
-                # Ojos cerrados
-                if tiempo_inicio_cierre is None:
-                    tiempo_inicio_cierre = time.time()
+            # Textos
+            texto_ear = f"EAR: {ear_promedio:.2f}"
+            texto_pitch = f"Cabeza: {pitch:.1f}"
+            
+            color_ear = (0, 255, 0) if ear_promedio > UMBRAL_EAR else (0, 0, 255)
+            color_pitch = (0, 255, 0) if pitch < UMBRAL_PITCH_ABAJO else (0, 0, 255)
+
+            cv2.putText(frame, texto_ear, (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color_ear, 2)
+            cv2.putText(frame, texto_pitch, (30, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color_pitch, 2)
+
+            # 4. Lógica de Alertas
+            condicion_ojos = ear_promedio < UMBRAL_EAR
+            condicion_cabeza = pitch > UMBRAL_PITCH_ABAJO 
+
+            if condicion_ojos or condicion_cabeza:
+                if tiempo_inicio_anomalia is None:
+                    tiempo_inicio_anomalia = time.time()
+                tiempo_transcurrido = time.time() - tiempo_inicio_anomalia
                 
-                tiempo_transcurrido = time.time() - tiempo_inicio_cierre
-                
-                # Clasificar según el tiempo (Lógica que pediste)
+                causa = "OJOS CERRADOS" if condicion_ojos else "CABEZA ABAJO"
+                if condicion_ojos and condicion_cabeza: causa = "DORMIDO TOTAL"
+
                 if tiempo_transcurrido >= 10:
                     estado_actual = "LLAMANDO 911"
-                    color_alerta = (0, 0, 255) # Rojo intenso
-                    # TODO: Enviar 'D' al Arduino
+                    if ser: ser.write(b'D')
                 elif tiempo_transcurrido >= 5:
-                    estado_actual = "ALERTA (5s)"
-                    color_alerta = (0, 165, 255) # Naranja
-                    # TODO: Enviar 'C' al Arduino
+                    estado_actual = "ALERTA CRITICA"
+                    if ser: ser.write(b'C')
                 elif tiempo_transcurrido >= 2:
-                    estado_actual = "CANSANCIO (2s)"
-                    color_alerta = (0, 255, 255) # Amarillo
-                    # TODO: Enviar 'B' al Arduino
+                    estado_actual = "CANSANCIO"
+                    if ser: ser.write(b'B')
                 else:
-                    estado_actual = "PARPADEO / CERRANDO"
-                    color_alerta = (200, 200, 200)
+                    estado_actual = f"DETECTANDO: {causa}"
+                    if ser: ser.write(b'A')
 
-                # Mostrar tiempo y estado en pantalla
-                cv2.putText(frame, f"Tiempo: {tiempo_transcurrido:.1f}s", (30, 60), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color_alerta, 2)
-                cv2.putText(frame, estado_actual, (30, 100), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, color_alerta, 3)
-
+                cv2.putText(frame, f"Tiempo: {tiempo_transcurrido:.1f}s", (30, 120), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+                cv2.putText(frame, estado_actual, (30, 160), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
             else:
-                # Ojos abiertos
-                tiempo_inicio_cierre = None
-                estado_actual = "OK - Ojos Abiertos"
-                # TODO: Enviar 'A' al Arduino
-                
-                cv2.putText(frame, "ESTADO: OK", (30, 100), 
+                tiempo_inicio_anomalia = None
+                if ser: ser.write(b'A')
+                cv2.putText(frame, "CONDUCTOR SEGURO", (30, 160), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    cv2.imshow('Detector de Sueno - Vision Artificial', frame)
+            # 5. Visualización Nariz (Usamos los ángulos calibrados 'yaw' y 'pitch')
+            nose_2d = (int(face_landmarks.landmark[1].x * w), int(face_landmarks.landmark[1].y * h))
+            p1 = (int(nose_2d[0]), int(nose_2d[1]))
+            # Multiplicamos por FACTOR_LINEA para que se note más
+            p2 = (int(nose_2d[0] + yaw * FACTOR_LINEA), int(nose_2d[1] + pitch * FACTOR_LINEA))
+            cv2.arrowedLine(frame, p1, p2, (255, 0, 0), 3)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    cv2.imshow('Sistema VW Final', frame)
+    
+    # --- CONTROL DE TECLAS ---
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q'):
         break
+    elif key == ord('c') or key == ord('C'):
+        # GUARDAR LA POSICIÓN ACTUAL COMO CERO
+        if 'raw_pitch' in locals():
+            offset_pitch = raw_pitch
+            offset_yaw = raw_yaw
+            calibrado = True
+            print(f"Calibrado! Nuevo Cero -> Pitch: {offset_pitch:.2f}, Yaw: {offset_yaw:.2f}")
 
 cap.release()
 cv2.destroyAllWindows()
