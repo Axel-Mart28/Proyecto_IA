@@ -3,19 +3,23 @@ import mediapipe as mp
 import time
 import math
 import numpy as np
-#import serial 
+import serial 
 
 # --- CONFIGURACIÓN DEL PUERTO SERIAL (ARDUINO) ---
 try:
-    # ser = serial.Serial('COM3', 9600, timeout=1) 
-    ser = None 
+    # AQUI ESTÁ EL CAMBIO: Puerto COM8
+    print("Intentando conectar con Arduino en COM8...")
+    ser = serial.Serial('COM8', 9600, timeout=1) 
+    time.sleep(2) # Esperamos 2 segundos a que el Arduino se reinicie
+    print("¡Conexión Exitosa!")
 except:
+    print("ERROR: No se pudo conectar al Arduino en COM8. Verifica conexión.")
     ser = None
 
 # --- PARÁMETROS DE CALIBRACIÓN ---
 UMBRAL_EAR = 0.21        
 UMBRAL_PITCH_ABAJO = 12  
-FACTOR_LINEA = 3.0       # Multiplicador visual: Haz más grande este número para una línea más larga
+FACTOR_LINEA = 3.0       # Multiplicador visual
 
 # --- VARIABLES DE ESTADO ---
 tiempo_inicio_anomalia = None
