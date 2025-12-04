@@ -1,7 +1,7 @@
 <div align="center">
 <h1>🚗 Sistema de Detección Del Sueño</h1>
 <p>
-<i>Inspirado en el sistema <a href="https://www.youtube.com/shorts/G59pxnDXlto">"Emergency Assist" de Volkswagen</a></i>
+<i>Inspirado en el sistema <a href="https://www.youtube.com/shorts/G59pxnDXlto">"Emergency Sleep Assist" de Volkswagen</a></i>
 </p>
 </div>
 
@@ -110,8 +110,9 @@ Nota de Seguridad: Si el sistema entra en éste estado, se hace una simulación 
 
 1. Requisitos de Software
 
-pip install opencv-python mediapipe numpy pyserial
-
+<li>
+<ul>pip install opencv-python mediapipe numpy pyserial <ul>
+</li>
 
 2. Cargar Firmware
 
@@ -123,7 +124,7 @@ Subir a la placa Arduino UNO.
 
 3. Ejecutar
 
-python Detector_Cabeza_Reparado.py
+01_Vision.py
 
 
 4. Instrucciones de Operación
