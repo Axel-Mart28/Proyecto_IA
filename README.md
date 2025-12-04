@@ -1,53 +1,41 @@
 <div align="center">
-<h1>🚗 Sistema de Asistencia al Conductor (DMS)</h1>
+<h1>🚗 Sistema de Detección Del Sueño</h1>
 <p>
-<strong>Detección de Somnolencia y Distracción en Tiempo Real</strong>
 
-
-
-
-<i>Inspirado en el sistema "Emergency Assist" de Volkswagen</i>
+<i>Inspirado en el sistema <a href="https://www.youtube.com/shorts/G59pxnDXlto">"Emergency Assist" de Volkswagen</a></i>
 </p>
 
-<!-- BADGES / ESCUDOS -->
 
-<!-- Estos son los escudos de colores que se ven profesionales -->
 
-<img src="https://www.google.com/search?q=https://img.shields.io/badge/Python-3.11-3776AB%3Fstyle%3Dfor-the-badge%26logo%3Dpython%26logoColor%3Dwhite" alt="Python" />
-<img src="https://www.google.com/search?q=https://img.shields.io/badge/Arduino-UNO-00979D%3Fstyle%3Dfor-the-badge%26logo%3Darduino%26logoColor%3Dwhite" alt="Arduino" />
-<img src="https://www.google.com/search?q=https://img.shields.io/badge/OpenCV-Computer_Vision-5C3EE8%3Fstyle%3Dfor-the-badge%26logo%3Dopencv%26logoColor%3Dwhite" alt="OpenCV" />
-<img src="https://www.google.com/search?q=https://img.shields.io/badge/MediaPipe-Face_Mesh-00E5FF%3Fstyle%3Dfor-the-badge" alt="MediaPipe" />
-</div>
 
 <hr>
 
 📖 Descripción del Proyecto
 
-Este proyecto es un prototipo funcional de un Driver Monitoring System (DMS). Combina visión artificial avanzada con un sistema embebido de seguridad para prevenir accidentes automovilísticos causados por fatiga o distracción.
+Este proyecto es un prototipo funcional de un sistema de detección del sueño para autos. Combina visión artificial con un sistema embebido (ARDUINO UNO) de seguridad para prevenir accidentes automovilísticos causados por fatiga o distracción.
 
-El sistema monitorea constantemente el rostro del conductor. Si detecta anomalías (ojos cerrados o cabeceo), inicia un protocolo de seguridad escalonado que va desde una advertencia visual hasta una intervención de emergencia simulada con bloqueo del sistema.
+El sistema monitorea constantemente el rostro del conductor. Si detecta anomalías (ojos cerrados o cabeceo), inicia un protocolo de seguridad escalonado que va desde una advertencia visual hasta una intervención de emergencia simulada.
 
-⚙️ Características Técnicas
+Características Técnicas:
 
-👁️ Visión Artificial (Python)
+Visión Artificial (Python):
 
 Detección de Ojos: Algoritmo EAR (Eye Aspect Ratio) para identificar fatiga visual.
 
 Detección de Cabeza: Algoritmo de Geometría Facial (Ratio Frente/Barbilla) para detectar microsueños (cabeceo) sin descalibrarse.
 
-Calibración Dinámica: Sistema de "Tarado" con tecla C para adaptarse a cualquier conductor y posición de asiento.
+Calibración Dinámica: Sistema de "Calibración" con tecla C para adaptarse a cualquier conductor y posición de asiento.
 
 Heartbeat Serial: Comunicación robusta con Arduino para evitar desincronización.
 
-🤖 Sistema Embebido (Arduino)
+Sistema Embebido (Arduino):
 
 Interfaz Humano-Máquina: Pantalla LCD I2C para mensajes de estado.
 
 Feedback Multisensorial: Semáforo LED y Buzzer con frecuencias variables.
 
-Protocolo de Seguridad: Máquina de estados con bloqueo. Si el conductor ignora las alertas o acumula fatiga 3 veces, el sistema se bloquea hasta recibir confirmación física (Botón).
 
-🔌 Diagrama de Conexiones (Hardware)
+Diagrama de Conexiones (Hardware)
 
 <div align="center">
 <table>
@@ -77,11 +65,6 @@ Protocolo de Seguridad: Máquina de estados con bloqueo. Si el conductor ignora 
 <td>Pasivo (Tonos)</td>
 </tr>
 <tr>
-<td>🔘 Push Button</td>
-<td>Pin 6</td>
-<td>Para desbloqueo (GND + Pin 6)</td>
-</tr>
-<tr>
 <td>📺 LCD I2C</td>
 <td>A4 (SDA), A5 (SCL)</td>
 <td>VCC a 5V, GND a GND</td>
@@ -89,7 +72,7 @@ Protocolo de Seguridad: Máquina de estados con bloqueo. Si el conductor ignora 
 </table>
 </div>
 
-🚦 Lógica de Estados (Alertas)
+Lógica de Estados (Alertas)
 
 El sistema evalúa el tiempo de distracción y reacciona progresivamente:
 
@@ -125,7 +108,7 @@ Abrir ojos inmediatamente
 
 BLOQUEO DEL SISTEMA
 
-Nota de Seguridad: Si el sistema entra en Emergencia o detecta Cansancio 3 veces consecutivas, se bloqueará. El conductor deberá presionar el Botón Físico para confirmar que está consciente y reiniciar el sistema.
+Nota de Seguridad: Si el sistema entra en éste estado, se hace una simulación de un llamado de emergencia a las autoridades.
 
 🚀 Instalación y Uso
 
