@@ -1,12 +1,9 @@
-<div align="center">
+div align="center">
 <h1>🚗 Sistema de Detección Del Sueño</h1>
 <p>
-
 <i>Inspirado en el sistema <a href="https://www.youtube.com/shorts/G59pxnDXlto">"Emergency Assist" de Volkswagen</a></i>
 </p>
-
-
-
+</div>
 
 <hr>
 
@@ -16,7 +13,7 @@ Este proyecto es un prototipo funcional de un sistema de detección del sueño p
 
 El sistema monitorea constantemente el rostro del conductor. Si detecta anomalías (ojos cerrados o cabeceo), inicia un protocolo de seguridad escalonado que va desde una advertencia visual hasta una intervención de emergencia simulada.
 
-Características Técnicas:
+⚙️ Características Técnicas
 
 Visión Artificial (Python):
 
@@ -34,8 +31,7 @@ Interfaz Humano-Máquina: Pantalla LCD I2C para mensajes de estado.
 
 Feedback Multisensorial: Semáforo LED y Buzzer con frecuencias variables.
 
-
-Diagrama de Conexiones (Hardware)
+🔌 Diagrama de Conexiones (Hardware)
 
 <div align="center">
 <table>
@@ -72,7 +68,7 @@ Diagrama de Conexiones (Hardware)
 </table>
 </div>
 
-Lógica de Estados (Alertas)
+🚦 Lógica de Estados (Alertas)
 
 El sistema evalúa el tiempo de distracción y reacciona progresivamente:
 
@@ -138,12 +134,9 @@ Presione la tecla 'C' para calibrar su posición neutral.
 
 El sistema iniciará el monitoreo.
 
-En caso de bloqueo, presione el botón físico en el circuito.
-
 Para salir, presione 'Q'.
 
 <div align="center">
 <p>Desarrollado para la materia de <strong>Inteligencia Artificial</strong></p>
 <p>CETI - Ingeniería en Mecatrónica</p>
-<img src="https://www.google.com/search?q=https://img.shields.io/badge/Hecho_con-❤️-red" alt="Love" />
 </div>
